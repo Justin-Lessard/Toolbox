@@ -1,4 +1,6 @@
+--SOURCE : https://www.sqlskills.com/blogs/paul/wait-statistics-or-please-tell-me-where-it-hurts/
 -- Last updated June 13, 2018
+
 WITH [Waits] AS
     (SELECT
         [wait_type],
