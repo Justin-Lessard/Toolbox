@@ -1,15 +1,15 @@
 makecert.exe ^
--n "CN=%%%---CERTIFICATE NAME---%%%" ^
+-n "CN=%%%%%STOXIIS3%%%%%" ^
 -r ^
 -pe ^
 -a sha512 ^
 -len 4096 ^
 -cy authority ^
--sv CARoot.pvk ^
-CARoot.cer
+-sv %%%%%STOXIIS3%%%%%.pvk ^
+STOXIIS3.cer
 pvk2pfx.exe ^
--pvk CARoot.pvk ^
--spc CARoot.cer ^
--pfx CARoot.pfx ^
--po %%%---PASSWORD---PASSWORD---%%%
+-pvk %%%%%STOXIIS3%%%%%.pvk ^
+-spc %%%%%STOXIIS3%%%%%.cer ^
+-pfx %%%%%STOXIIS3%%%%%.pfx ^
+-po %%%%%PASSWORD%%%%%PASSWORD%%%%%
  
