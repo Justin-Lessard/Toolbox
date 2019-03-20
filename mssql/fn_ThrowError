@@ -1,0 +1,11 @@
+-- =============================================
+-- Author:		  Justin Lessard
+-- Create date: 2019-02-27
+-- Description:	Throw an error with a message inside a query
+-- =============================================
+CREATE FUNCTION [dbo].[fn_ThrowError](@ErrorMessage VARCHAR(MAX))
+RETURNS NVARCHAR(MAX)
+AS
+BEGIN
+	RETURN CAST('Error happened here.' AS int);
+END
