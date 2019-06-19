@@ -1,0 +1,20 @@
+/* ==UserStyle==
+@name           Hide image
+@namespace      github.com/Justin-Lessard/Toolbox
+@homepageURL    https://github.com/Justin-Lessard/Toolbox/UserStyle
+@updateURL      https://github.com/Justin-Lessard/Toolbox/UserStyle/HideImages.user.css
+@version        1.0.0
+@description    Hide all images and videos
+@author         JustinLessard
+==/UserStyle== */
+
+img,
+video,
+canvas,
+svg {
+    visibility: hidden;
+}
+
+* {
+    background-image: none !important;
+}
