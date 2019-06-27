@@ -1,0 +1,222 @@
+# Copied from https://raw.githubusercontent.com/lutzky/wamc/master/docker-compose.yaml
+
+version: '3'
+
+services:
+  plex:
+    container_name: wamc_plex
+    image: plexinc/pms-docker:latest
+    network_mode: host
+    environment:
+      - PLEX_UID=${USER_ID}
+      - PLEX_GID=${GROUP_ID}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./media/radarr/movies:/data/movies
+      - ./media/sonarr/series:/data/tvshows
+      - ./media/plex/config/:/config
+      - ./media/plex/transcode/:/transcode
+    depends_on:
+      - sonarr
+      - radarr
+    restart: always
+
+  filebrowser:
+    container_name: wamc_filebrowser
+    image: filebrowser/filebrowser:v1.10.0
+    restart: always
+    networks:
+      - web
+    volumes:
+      - ./filebrowser/database.db:/database.db
+      - ./media/:/srv
+    ports:
+      - 1111:80
+    command:
+      - --port=80
+      - --database=/database.db
+      - --scope=/srv
+      - --baseurl=/filebrowser
+      - --no-auth
+    labels:
+      - "traefik.enable=true"
+      # Ugly hack to add a trailing slash; https://github.com/containous/traefik/issues/563
+      - "traefik.frontend.redirect.regex=^(.*)/filebrowser$$"
+      - "traefik.frontend.redirect.replacement=$$1/filebrowser/"
+      - "traefik.frontend.rule=PathPrefix:/filebrowser;ReplacePathRegex: ^/netdata/(.*) /$$1"
+
+  tautulli:
+    container_name: wamc_tautulli
+    image: linuxserver/tautulli:latest
+    networks:
+      - web
+    environment:
+      - PUID=${USER_ID}
+      - PGID=${GROUP_ID}
+      - TZ=Europe/Dublin
+    volumes:
+      - ./media/tautulli:/config
+      - ./media/plex/config/Library/Application\ Support/Plex\ Media\ Server/Logs:/logs:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=PathPrefix:/tautulli"
+      - "traefik.port=8181"
+    depends_on:
+      - plex
+    restart: always
+
+  transmission:
+    container_name: wamc_transmission
+    image: linuxserver/transmission:latest
+    networks:
+      - web
+    environment:
+      - PUID=${USER_ID}
+      - PGID=${GROUP_ID}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./media/transmission/config/:/config
+      - ./media/transmission/downloads/:/downloads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.redirect.regex=^(.*)/transmission/(web)?$$"
+      - "traefik.frontend.redirect.replacement=$$1/transmission/web/"
+      - "traefik.frontend.rule=PathPrefix:/transmission"
+      - "traefik.port=9091"
+    restart: always
+
+  sonarr:
+    container_name: wamc_sonarr
+    image: linuxserver/sonarr:latest
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=PathPrefix:/sonarr"
+      - "traefik.port=8989"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /dev/rtc:/dev/rtc:ro
+      - ./media/sonarr/series:/tv
+      - ./media/sonarr/config:/config
+      - ./media/transmission/downloads/:/downloads
+    environment:
+      - PUID=${USER_ID}
+      - PGID=${GROUP_ID}
+    depends_on:
+      - transmission
+    restart: always
+
+  radarr:
+    container_name: wamc_radarr
+    image: linuxserver/radarr:latest
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=PathPrefix:/radarr"
+      - "traefik.port=7878"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /dev/rtc:/dev/rtc:ro
+      - ./media/radarr/movies:/movies
+      - ./media/radarr/config:/config
+      - ./media/transmission/downloads/:/downloads
+    environment:
+      - PUID=${USER_ID}
+      - PGID=${GROUP_ID}
+    depends_on:
+      - transmission
+    restart: always
+
+  # Proxy to a bunch of public trackers
+  jackett:
+    container_name: wamc_jackett
+    image: linuxserver/jackett:latest
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=PathPrefix:/jackett"
+      - "traefik.port=9117"
+    volumes:
+      - ./media/jackett/config/:/config
+      - ./media/transmission/downloads/:/downloads
+    environment:
+      - PUID=${USER_ID}
+      - PGID=${GROUP_ID}
+    restart: always
+
+  webdu:
+    container_name: wamc_webdu
+    image: lutzky/webdu
+    networks:
+      - web
+    volumes:
+      - .:/data:ro
+    command:
+      - "--base_path=/data"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=PathPrefixStrip:/webdu"
+      - "traefik.port=8099"
+    restart: always
+
+  organizr:
+    container_name: wamc_organizr
+    image: organizrtools/organizr-v2
+    restart: always
+    environment:
+      - PUID=${USER_ID}
+      - PGID=${GROUP_ID}
+    networks:
+      - web
+    volumes:
+      - ./media/organizr-v2:/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.port=80"
+      - "traefik.frontend.rule=PathPrefix:/"
+
+  sonarr_webhook:
+    container_name: wamc_sonarr_webhook
+    image: lutzky/sonarr-webhook
+    restart: always
+    environment:
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_FROM=${SMTP_FROM}
+    networks:
+      - web
+
+  traefik:
+    image: traefik
+    restart: always
+    ports:
+      - "8111:80"
+      - "8112:443"
+      - "8113:8080"
+    networks:
+      - web
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik.toml:/traefik.toml
+      - ./acme.json:/acme.json
+      - ./.htpasswd:/.htpasswd
+    container_name: traefik
+  traefik_local:
+    image: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "8080:8080"
+    networks:
+      - web
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik_local.toml:/traefik.toml
+    container_name: traefik_local
+
+networks:
+  web:
