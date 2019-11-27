@@ -1,0 +1,3 @@
+DECLARE @spid INT = 123;
+
+DBCC INPUTBUFFER(@spid);
