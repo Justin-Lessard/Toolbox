@@ -1,18 +1,8 @@
         /// <summary>
-        /// Exemple usage
+        /// Zip two list
         /// </summary>
-        private IEnumerable<PriceData> GetPriceDataEnumerable(IEnumerable<AxProductPrice> axData, ICollection<ProductCorrespondence> correspondencesCollection)
-        {
-            var comparer = Comparer<string>.Create(StringComparer.OrdinalIgnoreCase.Compare);
-            return Zip(axData, correspondencesCollection, x => x.AxItemId, x => x.ExternalId, comparer)
-                    .Select(x => new PriceData(x.right.ProductId, x.left.Msrp, x.left.SalesPrice));
-        }
-
-        /// <summary>
-        /// Zip two ordered list
-        /// </summary>
-        public IEnumerable<(TL left, TR right)> Zip<TL, TR , TLKey>(
-            IEnumerable<TL> leftEnumerable, 
+        private IEnumerable<(TLKey key, TL? left, TR? right)> Zip<TL, TR, TLKey>(
+            IEnumerable<TL> leftEnumerable,
             IEnumerable<TR> rightEnumerable,
             Func<TL, TLKey> leftKey,
             Func<TR, TLKey> rightKey,
@@ -26,26 +16,27 @@
             var leftItem = leftEnumerator.MoveNext() ? leftEnumerator.Current : null;
             var rightItem = rightEnumerator.MoveNext() ? rightEnumerator.Current : null;
 
-            while (leftItem is not null && rightItem is not null)
+            while (leftItem is not null || rightItem is not null)
             {
                 // Fast forward leftEnumerator if necessary
-                while (leftItem is not null && 0 > comparer.Compare(leftKey(leftItem), rightKey(rightItem)))
+                while (leftItem is not null && (rightItem is null || 0 > comparer.Compare(leftKey(leftItem), rightKey(rightItem))))
+                {
+                    yield return (leftKey(leftItem), leftItem, null);
                     leftItem = leftEnumerator.MoveNext() ? leftEnumerator.Current : null;
-                if (leftItem is null)
-                    break;
+                }
 
                 // Fast forward rightEnumerator if necessary
-                while (rightItem is not null && 0 < comparer.Compare(leftKey(leftItem), rightKey(rightItem)))
+                while (rightItem is not null && (leftItem is null || 0 < comparer.Compare(leftKey(leftItem), rightKey(rightItem))))
+                {
+                    yield return (rightKey(rightItem), null, rightItem);
                     rightItem = rightEnumerator.MoveNext() ? rightEnumerator.Current : null;
-                if (rightItem is null)
-                    break;
+                }
 
                 // Match between left and right
-                if (0 == comparer.Compare(leftKey(leftItem), rightKey(rightItem)))
+                if (leftItem is not null && rightItem is not null && 0 == comparer.Compare(leftKey(leftItem), rightKey(rightItem)))
                 {
-                    yield return (leftItem, rightItem);
+                    yield return (leftKey(leftItem), leftItem, rightItem);
                     leftItem = leftEnumerator.MoveNext() ? leftEnumerator.Current : null;
                     rightItem = rightEnumerator.MoveNext() ? rightEnumerator.Current : null;
                 }
             }
-        }
