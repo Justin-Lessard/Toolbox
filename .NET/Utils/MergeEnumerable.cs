@@ -1,12 +1,12 @@
         /// <summary>
         /// Merge two IEnumerable together. Returning a tuples of matched items from both IEnumerable.
         /// </summary>
-        public static IEnumerable<(TLKey key, TLeft leftItem, TRight rightItem)> MergeEnumerable<TLeft, TRight, TLKey>(
-            IComparer<TLKey> keyComparer,
+        public static IEnumerable<(TKey Key, TLeft LeftItem, TRight RightItem)> MergeEnumerable<TKey, TLeft, TRight>(
+            this IComparer<TKey> keyComparer,
             IEnumerable<TLeft> leftEnumerable,
             IEnumerable<TRight> rightEnumerable,
-            Func<TLeft, TLKey> leftKeySelector,
-            Func<TRight, TLKey> rightKeySelector)
+            Func<TLeft, TKey> leftKeySelector,
+            Func<TRight, TKey> rightKeySelector)
             where TLeft : class
             where TRight : class
         {
